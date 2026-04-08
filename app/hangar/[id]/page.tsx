@@ -73,12 +73,12 @@ export default async function AircraftDetailPage({ params }: { params: Promise<{
                 <p className="text-slate-400 font-mono text-sm mt-0.5">{entry.n_number}</p>
               )}
               {entry.listing_location && (
-                <p className="text-slate-500 text-sm mt-1">ð {entry.listing_location}</p>
+                <p className="text-slate-500 text-sm mt-1">📍 {entry.listing_location}</p>
               )}
             </div>
             <div className="flex flex-wrap gap-2">
               {redFlags.length > 0 && (
-                <span className="badge bg-red-50 text-red-600">â ï¸ {redFlags.length} red flag{redFlags.length !== 1 ? "s" : ""}</span>
+                <span className="badge bg-red-50 text-red-600">⚠️ {redFlags.length} red flag{redFlags.length !== 1 ? "s" : ""}</span>
               )}
               {entry.listing_price && (
                 <span className="badge bg-green-50 text-green-700 font-semibold">${entry.listing_price.toLocaleString()}</span>
@@ -89,10 +89,10 @@ export default async function AircraftDetailPage({ params }: { params: Promise<{
           {/* Specs grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-5 pt-5 border-t border-slate-100">
             {[
-              { label: "TTAF", value: entry.ttaf ? `${entry.ttaf.toLocaleString()} hrs` : "â" },
-              { label: "SMOH", value: entry.smoh ? `${entry.smoh.toLocaleString()} hrs` : "â", warn: engineLifePct !== null && engineLifePct >= 75 },
-              { label: "TBO", value: entry.tbo ? `${entry.tbo.toLocaleString()} hrs` : "â" },
-              { label: "Prop Time", value: entry.prop_time ? `${entry.prop_time.toLocaleString()} hrs` : "â" },
+              { label: "TTAF", value: entry.ttaf ? `${entry.ttaf.toLocaleString()} hrs` : "—" },
+              { label: "SMOH", value: entry.smoh ? `${entry.smoh.toLocaleString()} hrs` : "—", warn: engineLifePct !== null && engineLifePct >= 75 },
+              { label: "TBO", value: entry.tbo ? `${entry.tbo.toLocaleString()} hrs` : "—" },
+              { label: "Prop Time", value: entry.prop_time ? `${entry.prop_time.toLocaleString()} hrs` : "—" },
             ].map((spec) => (
               <div key={spec.label}>
                 <div className="text-xs text-slate-400 uppercase tracking-wide font-medium">{spec.label}</div>
@@ -119,7 +119,7 @@ export default async function AircraftDetailPage({ params }: { params: Promise<{
                 />
               </div>
               <p className="text-xs text-slate-400 mt-1">
-                {entry.smoh?.toLocaleString()} / {entry.tbo?.toLocaleString()} hrs â {(entry.tbo - entry.smoh).toLocaleString()} hrs remaining
+                {entry.smoh?.toLocaleString()} / {entry.tbo?.toLocaleString()} hrs — {(entry.tbo - entry.smoh).toLocaleString()} hrs remaining
               </p>
             </div>
           )}
@@ -146,7 +146,7 @@ export default async function AircraftDetailPage({ params }: { params: Promise<{
             {redFlags.length > 0 && (
               <div className="card p-5 border-amber-200 bg-amber-50/30">
                 <h2 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
-                  <span className="text-lg">ð©</span> Red Flag Analysis
+                  <span className="text-lg">🚩</span> Red Flag Analysis
                 </h2>
                 <ul className="space-y-2.5">
                   {redFlags.map((flag, i) => (
@@ -178,7 +178,7 @@ export default async function AircraftDetailPage({ params }: { params: Promise<{
             {entry.ai_summary && (
               <div className="card p-5">
                 <h2 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
-                  <span className="text-lg">ð¤</span> AI Summary
+                  <span className="text-lg">🤖</span> AI Summary
                 </h2>
                 <p className="text-sm text-slate-600 leading-relaxed">{entry.ai_summary}</p>
               </div>
@@ -187,7 +187,7 @@ export default async function AircraftDetailPage({ params }: { params: Promise<{
             {/* Airframe & Engine */}
             <div className="card p-5">
               <h2 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                <span className="text-lg">ð§</span> Airframe & Engine
+                <span className="text-lg">🔧</span> Airframe & Engine
               </h2>
               <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
                 {[
@@ -211,7 +211,7 @@ export default async function AircraftDetailPage({ params }: { params: Promise<{
             {(entry.paint_condition || entry.interior_condition || entry.logbooks_available || entry.damage_history) && (
               <div className="card p-5">
                 <h2 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                  <span className="text-lg">ð</span> Condition & Records
+                  <span className="text-lg">📋</span> Condition & Records
                 </h2>
                 <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
                   {[
@@ -246,7 +246,7 @@ export default async function AircraftDetailPage({ params }: { params: Promise<{
             {avionics.length > 0 && (
               <div className="card p-5">
                 <h2 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
-                  <span className="text-lg">ð¡</span> Avionics & Equipment
+                  <span className="text-lg">📡</span> Avionics & Equipment
                 </h2>
                 <div className="flex flex-wrap gap-2">
                   {avionics.map((item, i) => (
@@ -256,11 +256,11 @@ export default async function AircraftDetailPage({ params }: { params: Promise<{
               </div>
             )}
 
-            {/* Listing Description */}
+            {/* Listing Description */m
             {entry.listing_description && (
               <div className="card p-5">
                 <h2 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
-                  <span className="text-lg">ð</span> Listing Description
+                  <span className="text-lg">📄</span> Listing Description
                 </h2>
                 <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">{entry.listing_description}</p>
               </div>
@@ -270,7 +270,7 @@ export default async function AircraftDetailPage({ params }: { params: Promise<{
             {aircraft && (
               <div className="card p-5">
                 <h2 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                  <span className="text-lg">ðï¸</span> FAA Registry
+                  <span className="text-lg">🏛️</span> FAA Registry
                 </h2>
                 <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
                   {[
@@ -293,13 +293,13 @@ export default async function AircraftDetailPage({ params }: { params: Promise<{
             {/* NTSB */}
             <div className="card p-5">
               <h2 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
-                <span className="text-lg">ð¨</span> NTSB Accident History
+                <span className="text-lg">🚨</span> NTSB Accident History
               </h2>
               {hasNTSB ? (
                 <ul className="space-y-2 text-sm text-slate-600">
                   {(aircraft.ntsb_accidents as Array<{date: string; location: string; description: string}>).map((acc, i) => (
                     <li key={i} className="border-l-2 border-red-300 pl-3 py-1">
-                      <div className="font-medium text-red-700">{acc.date} â {acc.location}</div>
+                      <div className="font-medium text-red-700">{acc.date} — {acc.location}</div>
                       <div className="text-slate-500">{acc.description}</div>
                     </li>
                   ))}
