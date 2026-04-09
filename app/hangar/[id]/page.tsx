@@ -4,6 +4,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import Navigation from "@/components/Navigation";
 import DeleteAircraftButton from "@/components/DeleteAircraftButton";
+import AvioncsPanelUpload from "@/components/AvioncsPanelUpload";
 
 const statusOptions = [
   { value: "considering", label: "Considering" },
@@ -262,18 +263,21 @@ export default async function AircraftDetailPage({ params }: { params: Promise<{
             )}
 
             {/* Avionics */}
-            {avionics.length > 0 && (
-              <div className="card p-5">
-                <h2 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
-                  <span className="text-lg">&#128225;</span> Avionics &amp; Equipment
-                </h2>
+            <div className="card p-5">
+              <h2 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                <span className="text-lg">&#128225;</span> Avionics &amp; Equipment
+              </h2>
+              {avionics.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
                   {avionics.map((item, i) => (
                     <span key={i} className="badge bg-slate-100 text-slate-700 text-xs">{item}</span>
                   ))}
                 </div>
-              </div>
-            )}
+              ) : (
+                <p className="text-sm text-slate-400 italic">No avionics listed yet</p>
+              )}
+              <AvioncsPanelUpload entryId={entry.id} currentAvionics={avionics} />
+            </div>
 
             {/* Listing Description */}
             {entry.listing_description && (
