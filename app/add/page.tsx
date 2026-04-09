@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import Navigation from "@/components/Navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -11,15 +11,17 @@ export default function AddAircraftPage() {
   const [mode, setMode] = useState<InputMode>("url");
   const [url, setUrl] = useState("");
   const [nNumber, setNNumber] = useState("");
+  const [screenshot, setScreenshot] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [progress, setProgress] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError("");
-    setProgress("Analyzing listingâ¦");
+    setProgress("Analyzing listing…");
 
     try {
       const supabase = createClient();
@@ -29,19 +31,34 @@ export default function AddAircraftPage() {
       let extractedData: Record<string, unknown> = {};
 
       if (mode === "url" && url) {
-        setProgress("Scraping listingâ¦");
+        setProgress("Scraping listing…");
         const res = await fetch("/api/scrape", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ url }),
         });
-        if (!res.ok) throw new Error("Failed to scrape listing");
-        extractedData = await res.json();
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || "Failed to scrape listing");
+        extractedData = json;
+      }
+
+      if (mode === "screenshot" && screenshot) {
+        setProgress("Reading screenshot…");
+        const imageBase64 = await fileToBase64(screenshot);
+        const imageMediaType = screenshot.type as "image/jpeg" | "image/png" | "image/gif" | "image/webp";
+        const res = await fetch("/api/scrape", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageBase64, imageMediaType }),
+        });
+        const json = await res.json();
+        if (!res.ok) throw new Error(json.error || "Failed to read screenshot");
+        extractedData = json;
       }
 
       if ((mode === "nnumber" && nNumber) || extractedData.nNumber) {
         const n = mode === "nnumber" ? nNumber : (extractedData.nNumber as string);
-        setProgress("Looking up FAA registryâ¦");
+        setProgress("Looking up FAA registry…");
         const res = await fetch(`/api/faa/lookup?n=${encodeURIComponent(n)}`);
         if (res.ok) {
           const faaData = await res.json();
@@ -49,11 +66,9 @@ export default function AddAircraftPage() {
         }
       }
 
-      setProgress("Saving to your hangarâ¦");
+      setProgress("Saving to your hangar…");
 
-      // Build red flags array and count
       const redFlags = (extractedData.redFlags as Array<{severity: string; category: string; message: string}>) || [];
-      const redFlagsCount = redFlags.length;
 
       const { data: entry, error: insertError } = await supabase
         .from("hangar_entries")
@@ -81,7 +96,7 @@ export default function AddAircraftPage() {
           listing_description: extractedData.listingDescription as string || null,
           ai_summary: extractedData.aiSummary as string || null,
           red_flags: redFlags.length > 0 ? redFlags : null,
-          red_flags_count: redFlagsCount,
+          red_flags_count: redFlags.length,
           enrichment_status: "pending",
           status: "considering",
         })
@@ -97,7 +112,21 @@ export default function AddAircraftPage() {
     }
   }
 
+  function fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        // Strip the data URL prefix (e.g. "data:image/png;base64,")
+        resolve(result.split(",")[1]);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
   function extractSource(url: string): string {
+    if (!url) return "other";
     if (url.includes("trade-a-plane")) return "trade-a-plane";
     if (url.includes("barnstormers")) return "barnstormers";
     if (url.includes("controller")) return "controller";
@@ -107,10 +136,16 @@ export default function AddAircraftPage() {
   }
 
   const modes: { id: InputMode; label: string; icon: string; desc: string }[] = [
-    { id: "url", label: "Listing URL", icon: "ð", desc: "Trade-A-Plane, Barnstormers, Controller, AeroTrader" },
-    { id: "nnumber", label: "N-Number", icon: "âï¸", desc: "Enter the tail number directly" },
-    { id: "screenshot", label: "Screenshot", icon: "ð¸", desc: "Upload a screenshot of the listing" },
+    { id: "url", label: "Listing URL", icon: "&#128279;", desc: "Trade-A-Plane, Barnstormers, Controller, AeroTrader" },
+    { id: "nnumber", label: "N-Number", icon: "&#9992;&#65039;", desc: "Enter the tail number directly" },
+    { id: "screenshot", label: "Screenshot", icon: "&#128248;", desc: "Upload a screenshot of the listing" },
   ];
+
+  const canSubmit = !loading && (
+    (mode === "url" && url.trim() !== "") ||
+    (mode === "nnumber" && nNumber.trim() !== "") ||
+    (mode === "screenshot" && screenshot !== null)
+  );
 
   return (
     <div className="min-h-screen bg-slate-50 pb-24 sm:pb-8">
@@ -126,12 +161,13 @@ export default function AddAircraftPage() {
           {modes.map((m) => (
             <button
               key={m.id}
+              type="button"
               onClick={() => setMode(m.id)}
               className={`card p-4 text-left transition-all ${
                 mode === m.id ? "border-blue-500 bg-blue-50 border-2" : "hover:border-slate-300"
               }`}
             >
-              <div className="text-xl mb-2">{m.icon}</div>
+              <div className="text-xl mb-2" dangerouslySetInnerHTML={{ __html: m.icon }} />
               <div className="text-sm font-semibold text-slate-900">{m.label}</div>
               <div className="text-xs text-slate-400 mt-0.5 leading-tight">{m.desc}</div>
             </button>
@@ -183,25 +219,51 @@ export default function AddAircraftPage() {
 
             {mode === "screenshot" && (
               <div>
-                <label className="label">Upload screenshot</label>
-                <div className="border-2 border-dashed border-slate-200 rounded-lg p-8 text-center hover:border-blue-300 transition-colors cursor-pointer">
-                  <div className="text-3xl mb-2">ð¸</div>
-                  <p className="text-sm text-slate-500">Drop a full-page screenshot here</p>
-                  <p className="text-xs text-slate-400 mt-1">PNG, JPG up to 10MB</p>
-                  <p className="text-xs text-blue-500 mt-3 font-medium">Screenshot upload coming soon</p>
+                <label className="label">Screenshot of listing</label>
+                <div
+                  className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+                    screenshot
+                      ? "border-green-400 bg-green-50"
+                      : "border-slate-200 hover:border-blue-300"
+                  }`}
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {screenshot ? (
+                    <>
+                      <div className="text-3xl mb-2">&#10003;</div>
+                      <p className="text-sm font-medium text-green-700">{screenshot.name}</p>
+                      <p className="text-xs text-slate-400 mt-1">Click to change</p>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-3xl mb-2">&#128248;</div>
+                      <p className="text-sm text-slate-500">Click to upload a screenshot</p>
+                      <p className="text-xs text-slate-400 mt-1">PNG, JPG up to 10MB</p>
+                    </>
+                  )}
                 </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg,image/webp"
+                  className="hidden"
+                  onChange={(e) => setScreenshot(e.target.files?.[0] ?? null)}
+                />
+                <p className="text-xs text-slate-400 mt-1.5">
+                  Use this if the URL mode is blocked by the listing site.
+                </p>
               </div>
             )}
 
             <button
               type="submit"
-              disabled={loading || mode === "screenshot"}
+              disabled={!canSubmit}
               className="btn-primary w-full py-3 flex items-center justify-center gap-2 disabled:opacity-60"
             >
               {loading ? (
                 <>
                   <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  {progress || "Processingâ¦"}
+                  {progress || "Processing…"}
                 </>
               ) : (
                 <>
@@ -217,11 +279,11 @@ export default function AddAircraftPage() {
 
         {/* Tips */}
         <div className="mt-4 p-4 bg-blue-50 rounded-xl border border-blue-100">
-          <p className="text-xs text-blue-700 font-semibold mb-1">ð¡ Tips</p>
+          <p className="text-xs text-blue-700 font-semibold mb-1">&#128161; Tips</p>
           <ul className="text-xs text-blue-600 space-y-1">
-            <li>â¢ If the URL is blocked, try switching to Screenshot mode</li>
-            <li>â¢ N-Number entry is fastest if you already know the tail number</li>
-            <li>â¢ We&apos;ll automatically pull FAA, NTSB, and ADS-B data for paid accounts</li>
+            <li>&#8226; If the URL is blocked, switch to Screenshot mode and upload a full-page screenshot</li>
+            <li>&#8226; N-Number entry is fastest if you already know the tail number</li>
+            <li>&#8226; We&apos;ll automatically pull FAA registry data for any aircraft with a known N-Number</li>
           </ul>
         </div>
       </div>
