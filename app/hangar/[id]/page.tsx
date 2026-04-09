@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import Navigation from "@/components/Navigation";
+import DeleteAircraftButton from "@/components/DeleteAircraftButton";
 
 const statusOptions = [
   { value: "considering", label: "Considering" },
@@ -73,20 +74,7 @@ export default async function AircraftDetailPage({ params }: { params: Promise<{
             </svg>
             Back to hangar
           </Link>
-          <form action={deleteAircraft}>
-            <button
-              type="submit"
-              className="inline-flex items-center gap-1.5 text-sm text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors"
-              onClick={(e) => {
-                if (!confirm("Remove this aircraft from your hangar?")) e.preventDefault();
-              }}
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-              </svg>
-              Remove
-            </button>
-          </form>
+          <DeleteAircraftButton action={deleteAircraft} />
         </div>
 
         {/* Aircraft header */}
@@ -224,7 +212,7 @@ export default async function AircraftDetailPage({ params }: { params: Promise<{
                 {[
                   ["TTAF", entry.ttaf ? `${entry.ttaf.toLocaleString()} hrs` : null],
                   ["SMOH", entry.smoh ? `${entry.smoh.toLocaleString()} hrs` : null],
-                     ["TBO", entry.tbo ? `${entry.tbo.toLocaleString()} hrs` : null],
+                  ["TBO", entry.tbo ? `${entry.tbo.toLocaleString()} hrs` : null],
                   ["Prop Time", entry.prop_time ? `${entry.prop_time.toLocaleString()} hrs` : null],
                   ["Engine", [entry.engine_make, entry.engine_model].filter(Boolean).join(" ") ||
                     [aircraft?.engine_make, aircraft?.engine_model].filter(Boolean).join(" ") || null],
@@ -308,7 +296,7 @@ export default async function AircraftDetailPage({ params }: { params: Promise<{
                     ["Status", aircraft.faa_status_description || aircraft.faa_status],
                     ["Registrant", aircraft.registrant_name],
                     ["Location", [aircraft.registrant_city, aircraft.registrant_state].filter(Boolean).join(", ")],
-                    ["Expiration", aircraft.fab_expiration_date],
+                    ["Expiration", aircraft.faa_expiration_date],
                     ["Serial #", aircraft.serial_number],
                     ["Engine", [aircraft.engine_make, aircraft.engine_model].filter(Boolean).join(" ")],
                   ].map(([label, value]) => value ? (
@@ -401,7 +389,7 @@ export default async function AircraftDetailPage({ params }: { params: Promise<{
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
                     </svg>
                   ) : (
-                  span className="text-xs font-semibold text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full">
+                    <span className="text-xs font-semibold text-blue-500 bg-blue-50 px-2 py-0.5 rounded-full">
                       UPGRADE
                     </span>
                   )}
