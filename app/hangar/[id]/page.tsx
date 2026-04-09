@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import Navigation from "@/components/Navigation";
 import DeleteAircraftButton from "@/components/DeleteAircraftButton";
 import AvioncsPanelUpload from "@/components/AvioncsPanelUpload";
+import EditableField from "@/components/EditableField";
 
 const statusOptions = [
   { value: "considering", label: "Considering" },
@@ -83,41 +84,41 @@ export default async function AircraftDetailPage({ params }: { params: Promise<{
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
               <h1 className="text-2xl font-bold text-slate-900">
-                {entry.year && entry.make && entry.model
-                  ? `${entry.year} ${entry.make} ${entry.model}`
-                  : entry.make && entry.model
-                  ? `${entry.make} ${entry.model}`
-                  : "Aircraft"}
+                <EditableField entryId={id} field="year" value={entry.year} type="number" placeholder="Year" className="w-16" displayClassName="text-2xl font-bold text-slate-900" />
+                {" "}
+                <EditableField entryId={id} field="make" value={entry.make} placeholder="Make" displayClassName="text-2xl font-bold text-slate-900" />
+                {" "}
+                <EditableField entryId={id} field="model" value={entry.model} placeholder="Model" displayClassName="text-2xl font-bold text-slate-900" />
               </h1>
-              {entry.n_number && (
-                <p className="text-slate-400 font-mono text-sm mt-0.5">{entry.n_number}</p>
-              )}
-              {entry.listing_location && (
-                <p className="text-slate-500 text-sm mt-1">&#128205; {entry.listing_location}</p>
-              )}
+              <p className="text-slate-400 font-mono text-sm mt-0.5">
+                <EditableField entryId={id} field="n_number" value={entry.n_number} placeholder="N-Number" displayClassName="font-mono text-slate-400" />
+              </p>
+              <p className="text-slate-500 text-sm mt-1">
+                &#128205; <EditableField entryId={id} field="listing_location" value={entry.listing_location} placeholder="Location" displayClassName="text-slate-500" />
+              </p>
             </div>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2 items-start">
               {redFlags.length > 0 && (
                 <span className="badge bg-red-50 text-red-600">&#9888;&#65039; {redFlags.length} red flag{redFlags.length !== 1 ? "s" : ""}</span>
               )}
-              {entry.listing_price && (
-                <span className="badge bg-green-50 text-green-700 font-semibold">${entry.listing_price.toLocaleString()}</span>
-              )}
+              <span className="badge bg-green-50 text-green-700 font-semibold">
+                $<EditableField entryId={id} field="listing_price" value={entry.listing_price} type="number" placeholder="Price" displayClassName="text-green-700 font-semibold" />
+              </span>
             </div>
           </div>
 
           {/* Specs grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-5 pt-5 border-t border-slate-100">
             {[
-              { label: "TTAF", value: entry.ttaf ? `${entry.ttaf.toLocaleString()} hrs` : "\u2014" },
-              { label: "SMOH", value: entry.smoh ? `${entry.smoh.toLocaleString()} hrs` : "\u2014", warn: engineLifePct !== null && engineLifePct >= 75 },
-              { label: "TBO", value: entry.tbo ? `${entry.tbo.toLocaleString()} hrs` : "\u2014" },
-              { label: "Prop Time", value: entry.prop_time ? `${entry.prop_time.toLocaleString()} hrs` : "\u2014" },
+              { label: "TTAF", field: "ttaf", value: entry.ttaf, warn: false },
+              { label: "SMOH", field: "smoh", value: entry.smoh, warn: engineLifePct !== null && engineLifePct >= 75 },
+              { label: "TBO", field: "tbo", value: entry.tbo, warn: false },
+              { label: "Prop Time", field: "prop_time", value: entry.prop_time, warn: false },
             ].map((spec) => (
               <div key={spec.label}>
                 <div className="text-xs text-slate-400 uppercase tracking-wide font-medium">{spec.label}</div>
                 <div className={`text-lg font-semibold mt-0.5 ${spec.warn ? "text-amber-600" : "text-slate-900"}`}>
-                  {spec.value}
+                  <EditableField entryId={id} field={spec.field} value={spec.value} type="number" suffix=" hrs" placeholder="—" displayClassName={`text-lg font-semibold ${spec.warn ? "text-amber-600" : "text-slate-900"}`} />
                 </div>
               </div>
             ))}
@@ -210,57 +211,49 @@ export default async function AircraftDetailPage({ params }: { params: Promise<{
                 <span className="text-lg">&#128295;</span> Airframe &amp; Engine
               </h2>
               <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-                {[
-                  ["TTAF", entry.ttaf ? `${entry.ttaf.toLocaleString()} hrs` : null],
-                  ["SMOH", entry.smoh ? `${entry.smoh.toLocaleString()} hrs` : null],
-                  ["TBO", entry.tbo ? `${entry.tbo.toLocaleString()} hrs` : null],
-                  ["Prop Time", entry.prop_time ? `${entry.prop_time.toLocaleString()} hrs` : null],
-                  ["Engine", [entry.engine_make, entry.engine_model].filter(Boolean).join(" ") ||
-                    [aircraft?.engine_make, aircraft?.engine_model].filter(Boolean).join(" ") || null],
-                  ["Engine Type", aircraft?.engine_type_description || aircraft?.engine_type || null],
-                ].map(([label, value]) => value ? (
-                  <div key={label as string}>
-                    <dt className="text-slate-400 text-xs uppercase tracking-wide">{label}</dt>
-                    <dd className="text-slate-800 font-medium mt-0.5">{value}</dd>
+                {([
+                  { label: "TTAF", field: "ttaf", value: entry.ttaf, type: "number", suffix: " hrs" },
+                  { label: "SMOH", field: "smoh", value: entry.smoh, type: "number", suffix: " hrs" },
+                  { label: "TBO", field: "tbo", value: entry.tbo, type: "number", suffix: " hrs" },
+                  { label: "Prop Time", field: "prop_time", value: entry.prop_time, type: "number", suffix: " hrs" },
+                  { label: "Engine Make", field: "engine_make", value: entry.engine_make || aircraft?.engine_make, type: "text", suffix: "" },
+                  { label: "Engine Model", field: "engine_model", value: entry.engine_model || aircraft?.engine_model, type: "text", suffix: "" },
+                ] as const).map((row) => (
+                  <div key={row.label}>
+                    <dt className="text-slate-400 text-xs uppercase tracking-wide">{row.label}</dt>
+                    <dd className="text-slate-800 font-medium mt-0.5">
+                      <EditableField entryId={id} field={row.field} value={row.value} type={row.type as "text" | "number"} suffix={row.suffix} placeholder="—" displayClassName="text-slate-800 font-medium" />
+                    </dd>
                   </div>
-                ) : null)}
+                ))}
               </dl>
             </div>
 
             {/* Condition & Records */}
-            {(entry.paint_condition || entry.interior_condition || entry.logbooks_available || entry.damage_history) && (
-              <div className="card p-5">
-                <h2 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
-                  <span className="text-lg">&#128203;</span> Condition &amp; Records
-                </h2>
-                <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
-                  {[
-                    ["Paint", entry.paint_condition],
-                    ["Interior", entry.interior_condition],
-                    ["Logbooks", entry.logbooks_available],
-                    ["Damage History", entry.damage_history],
-                  ].map(([label, value]) => value ? (
-                    <div key={label as string}>
-                      <dt className="text-slate-400 text-xs uppercase tracking-wide">{label}</dt>
-                      <dd className={`font-medium mt-0.5 ${
-                        label === "Damage History" && value !== "None" ? "text-red-600" :
-                        label === "Logbooks" && value === "Not Available" ? "text-amber-600" :
+            <div className="card p-5">
+              <h2 className="font-semibold text-slate-900 mb-4 flex items-center gap-2">
+                <span className="text-lg">&#128203;</span> Condition &amp; Records
+              </h2>
+              <dl className="grid grid-cols-2 gap-x-6 gap-y-3 text-sm">
+                {([
+                  { label: "Paint", field: "paint_condition", value: entry.paint_condition },
+                  { label: "Interior", field: "interior_condition", value: entry.interior_condition },
+                  { label: "Logbooks", field: "logbooks_available", value: entry.logbooks_available },
+                  { label: "Damage History", field: "damage_history", value: entry.damage_history },
+                ] as const).map((row) => (
+                  <div key={row.label}>
+                    <dt className="text-slate-400 text-xs uppercase tracking-wide">{row.label}</dt>
+                    <dd className="font-medium mt-0.5">
+                      <EditableField entryId={id} field={row.field} value={row.value} placeholder="—" displayClassName={`font-medium ${
+                        row.label === "Damage History" && row.value && row.value !== "None" ? "text-red-600" :
+                        row.label === "Logbooks" && row.value === "Not Available" ? "text-amber-600" :
                         "text-slate-800"
-                      }`}>
-                        {label === "Damage History" && value === "None" ? (
-                          <span className="flex items-center gap-1 text-green-600">
-                            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-                            </svg>
-                            None
-                          </span>
-                        ) : value as string}
-                      </dd>
-                    </div>
-                  ) : null)}
-                </dl>
-              </div>
-            )}
+                      }`} />
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
 
             {/* Avionics */}
             <div className="card p-5">
@@ -339,6 +332,29 @@ export default async function AircraftDetailPage({ params }: { params: Promise<{
               )}
             </div>
 
+            {/* Form 337s */}
+            <div className="card p-5">
+              <h2 className="font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                <span className="text-lg">&#128196;</span> Form 337s &amp; Major Repairs
+              </h2>
+              {has337s ? (
+                <ul className="space-y-2 text-sm text-slate-600">
+                  {(aircraft.form_337s as Array<{date?: string; description?: string; stc?: string}>).map((f, i) => (
+                    <li key={i} className="border-l-2 border-blue-200 pl-3 py-1">
+                      {f.date && <div className="font-medium text-slate-700">{f.date}</div>}
+                      {f.description && <div className="text-slate-500 text-xs mt-0.5">{f.description}</div>}
+                      {f.stc && <div className="text-xs text-blue-600 font-mono mt-0.5">STC: {f.stc}</div>}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-slate-400 italic">No 337s on file</p>
+              )}
+              <p className="text-xs text-slate-400 mt-3 pt-3 border-t border-slate-100">
+                FAA 337 lookup and PDF upload coming in the next update.
+              </p>
+            </div>
+
           </div>
 
           {/* Right column */}
@@ -369,11 +385,7 @@ export default async function AircraftDetailPage({ params }: { params: Promise<{
             {/* Notes */}
             <div className="card p-5">
               <h2 className="font-semibold text-slate-900 mb-2">My Notes</h2>
-              {entry.user_notes ? (
-                <p className="text-sm text-slate-600 leading-relaxed">{entry.user_notes}</p>
-              ) : (
-                <p className="text-sm text-slate-400 italic">No notes yet</p>
-              )}
+              <EditableField entryId={id} field="user_notes" value={entry.user_notes} placeholder="Click to add notes…" displayClassName="text-sm text-slate-600 leading-relaxed" />
             </div>
 
             {/* Data Sources */}
