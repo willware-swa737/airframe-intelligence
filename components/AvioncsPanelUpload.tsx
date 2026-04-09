@@ -34,7 +34,14 @@ export default function AvioncsPanelUpload({ entryId, currentAvionics }: Props) 
 
     try {
       const imageBase64 = await fileToBase64(file);
-      const imageMediaType = file.type as "image/jpeg" | "image/png" | "image/webp";
+      // Normalize: browsers sometimes report "image/jpg" which Anthropic doesn't accept
+      const rawType = file.type;
+      const imageMediaType = (
+        rawType === "image/png" ? "image/png" :
+        rawType === "image/webp" ? "image/webp" :
+        rawType === "image/gif" ? "image/gif" :
+        "image/jpeg"
+      ) as "image/jpeg" | "image/png" | "image/webp" | "image/gif";
 
       const res = await fetch("/api/analyze-panel", {
         method: "POST",
