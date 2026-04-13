@@ -116,7 +116,8 @@ export default function DocumentSection({
   const [documents, setDocuments] = useState<Document[]>(initialDocuments);
   const [form337Summary, setForm337Summary] = useState<Form337Summary | null>(initialForm337Summary);
   const [titleSummary, setTitleSummary] = useState<TitleHistorySummary | null>(initialTitleSummary);
-  const [uploading, setUploading] = useState(false);
+  const [uploadingForm337, setUploadingForm337] = useState(false);
+  const [uploadingTitle, setUploadingTitle] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [analyzeStatus, setAnalyzeStatus] = useState<string | null>(null);
@@ -127,6 +128,7 @@ export default function DocumentSection({
   const titleRef = useRef<HTMLInputElement>(null);
 
   const uploadFile = useCallback(async (file: File, type: "form_337" | "title_history") => {
+    const setUploading = type === "form_337" ? setUploadingForm337 : setUploadingTitle;
     setUploading(true);
     setUploadError(null);
     try {
