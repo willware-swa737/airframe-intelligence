@@ -26,7 +26,13 @@ function createClient() {
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-const FORM_337_PROMPT = `You are analyzing FAA Form 337 (Major Repair and Alteration) documents for a general aviation aircraft. Extract all key information and return ONLY a valid JSON object with this exact structure:
+const FORM_337_PROMPT = `You are analyzing a PDF that may contain ONE or MULTIPLE FAA Form 337 (Major Repair and Alteration) documents for a general aviation aircraft.
+
+IMPORTANT: A single PDF file often contains multiple individual Form 337s. Each Form 337 is a separate event identified by the "MAJOR REPAIR AND ALTERATION" header, a different date, owner, or mechanic. Older microfilm-scanned FAA Registry forms are ALSO Form 337s even if they look different or weathered. Supporting documents like STC certificates and airworthiness certificates are NOT Form 337s — exclude them from the count.
+
+Count EVERY distinct Form 337 in the entire document and list each repair/alteration separately.
+
+Extract all key information and return ONLY a valid JSON object with this exact structure:
 {
   "analyzed_at": "<current ISO 8601 timestamp>",
   "document_count": <number of 337 forms analyzed>,
@@ -86,8 +92,9 @@ async function downloadDocumentAsBase64(
 // POST /api/hangar/[id]/analyze — run Claude analysis on uploaded documents (admin only)
 export async function POST(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await context.params;
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -111,7 +118,7 @@ export async function POST(
   const { data: entry } = await adminClient
     .from("hangar_entries")
     .select("n_number, make, model, year")
-    .eq("id", params.id)
+    .eq("id", id)
     .single();
 
   const aircraftLabel = entry
@@ -125,7 +132,7 @@ export async function POST(
     const { data: docs } = await adminClient
       .from("aircraft_documents")
       .select("*")
-      .eq("entry_id", params.id)
+      .eq("entry_id", id)
       .eq("type", "form_337");
 
     if (docs && docs.length > 0) {
@@ -160,12 +167,12 @@ export async function POST(
         const jsonMatch = rawText.match(/\{[\s\S]*\}/);
         const summary = jsonMatch ? JSON.parse(jsonMatch[0]) : { raw: rawText, error: "Could not parse JSON" };
         summary.analyzed_at = new Date().toISOString();
-        summary.document_count = docs.length;
+        // document_count comes from Claude's count of distinct Form 337s in the PDF
 
         await adminClient
           .from("hangar_entries")
           .update({ form_337_summary: summary })
-          .eq("id", params.id);
+          .eq("id", id);
 
         results.form_337 = summary;
       } catch (err: unknown) {
@@ -183,7 +190,7 @@ export async function POST(
     const { data: docs } = await adminClient
       .from("aircraft_documents")
       .select("*")
-      .eq("entry_id", params.id)
+      .eq("entry_id", id)
       .eq("type", "title_history");
 
     if (docs && docs.length > 0) {
@@ -223,7 +230,7 @@ export async function POST(
         await adminClient
           .from("hangar_entries")
           .update({ title_history_summary: summary })
-          .eq("id", params.id);
+          .eq("id", id);
 
         results.title_history = summary;
       } catch (err: unknown) {
@@ -242,8 +249,9 @@ export async function POST(
 // GET /api/hangar/[id]/analyze — get signed download URLs for documents (paid members)
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
+  const { id } = await context.params;
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -264,7 +272,7 @@ export async function GET(
   let query = adminClient
     .from("aircraft_documents")
     .select("*")
-    .eq("entry_id", params.id);
+    .eq("entry_id", id);
 
   if (docType) query = query.eq("type", docType);
 
