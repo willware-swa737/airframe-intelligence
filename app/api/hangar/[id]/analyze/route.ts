@@ -117,13 +117,13 @@ export async function POST(
   // Fetch the aircraft entry for context
   const { data: entry } = await adminClient
     .from("hangar_entries")
-    .select("n_number, make, model, year")
+    .select("n_number, make, model, year, aircraft_id")
     .eq("id", id)
     .single();
 
   const aircraftLabel = entry
     ? `${entry.year || ""} ${entry.make || ""} ${entry.model || ""} (${entry.n_number || "unknown N-number"})`.trim()
-    : `Aircraft ID ${params.id}`;
+    : `Aircraft ID ${id}`;
 
   const results: Record<string, unknown> = {};
 
@@ -154,7 +154,7 @@ export async function POST(
 
         contentBlocks.push({
           type: "text",
-          text: `Aircraft: ${aircraftLabel}\nNumber of 337 forms attached: ${docs.length}\n\n${FORM_337_PROMPT}`,
+          text: `Aircraft: ${aircraftLabel}\nNote: ${docs.length} PDF file(s) attached — each may contain MULTIPLE Form 337s. Count all distinct forms in the documents.\n\n${FORM_337_PROMPT}`,
         });
 
         const response = await anthropic.messages.create({
@@ -169,10 +169,9 @@ export async function POST(
         summary.analyzed_at = new Date().toISOString();
         // document_count comes from Claude's count of distinct Form 337s in the PDF
 
-        await adminClient
-          .from("hangar_entries")
-          .update({ form_337_summary: summary })
-          .eq("id", id);
+        if (entry?.aircraft_id) {
+          await adminClient.from("aircraft").update({ form_337_summary: summary }).eq("id", entry.aircraft_id);
+        }
 
         results.form_337 = summary;
       } catch (err: unknown) {
@@ -227,10 +226,9 @@ export async function POST(
         const summary = jsonMatch ? JSON.parse(jsonMatch[0]) : { raw: rawText, error: "Could not parse JSON" };
         summary.analyzed_at = new Date().toISOString();
 
-        await adminClient
-          .from("hangar_entries")
-          .update({ title_history_summary: summary })
-          .eq("id", id);
+        if (entry?.aircraft_id) {
+          await adminClient.from("aircraft").update({ title_history_summary: summary }).eq("id", entry.aircraft_id);
+        }
 
         results.title_history = summary;
       } catch (err: unknown) {
