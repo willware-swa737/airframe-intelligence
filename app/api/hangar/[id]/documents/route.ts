@@ -42,7 +42,9 @@ export async function GET(
   return NextResponse.json({ documents: docs });
 }
 
-// POST /api/hangar/[id]/documents — upload a PDF (admin only)
+// POST /api/hangar/[id]/documents — record a document (admin only)
+// Accepts JSON metadata when file was uploaded directly to storage by browser,
+// OR FormData with file for small PDFs (<4MB).
 export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -62,6 +64,39 @@ export async function POST(
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
+  const adminClient = createAdminClient();
+  const contentType = req.headers.get("content-type") || "";
+
+  // ── JSON path: file already uploaded to storage by browser ──
+  if (contentType.includes("application/json")) {
+    const body = await req.json();
+    const { type: docType, filename, file_path: filePath, file_size: fileSize } = body;
+
+    if (!docType || !filename || !filePath) {
+      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+    if (!["form_337", "title_history"].includes(docType)) {
+      return NextResponse.json({ error: "Invalid type" }, { status: 400 });
+    }
+
+    const { data: doc, error: dbError } = await adminClient
+      .from("aircraft_documents")
+      .insert({
+        entry_id: params.id,
+        type: docType,
+        filename,
+        file_path: filePath,
+        file_size: fileSize ?? null,
+        uploaded_by: user.id,
+      })
+      .select()
+      .single();
+
+    if (dbError) return NextResponse.json({ error: dbError.message }, { status: 500 });
+    return NextResponse.json({ document: doc }, { status: 201 });
+  }
+
+  // ── FormData path: small file uploaded through this route ──
   const formData = await req.formData();
   const file = formData.get("file") as File | null;
   const docType = formData.get("type") as string | null;
@@ -76,27 +111,20 @@ export async function POST(
     return NextResponse.json({ error: "Only PDF files are accepted" }, { status: 400 });
   }
 
-  const adminClient = createAdminClient();
   const arrayBuffer = await file.arrayBuffer();
   const buffer = Buffer.from(arrayBuffer);
-
-  // Unique path: entryId/type/timestamp-filename
   const timestamp = Date.now();
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
   const filePath = `${params.id}/${docType}/${timestamp}-${safeName}`;
 
   const { error: uploadError } = await adminClient.storage
     .from("aircraft-documents")
-    .upload(filePath, buffer, {
-      contentType: "application/pdf",
-      upsert: false,
-    });
+    .upload(filePath, buffer, { contentType: "application/pdf", upsert: false });
 
   if (uploadError) {
     return NextResponse.json({ error: uploadError.message }, { status: 500 });
   }
 
-  // Record in aircraft_documents table
   const { data: doc, error: dbError } = await adminClient
     .from("aircraft_documents")
     .insert({
@@ -111,14 +139,12 @@ export async function POST(
     .single();
 
   if (dbError) {
-    // Clean up the storage upload if DB insert fails
     await adminClient.storage.from("aircraft-documents").remove([filePath]);
     return NextResponse.json({ error: dbError.message }, { status: 500 });
   }
 
   return NextResponse.json({ document: doc }, { status: 201 });
 }
-
 // DELETE /api/hangar/[id]/documents?docId=xxx — remove a document (admin only)
 export async function DELETE(
   req: NextRequest,
