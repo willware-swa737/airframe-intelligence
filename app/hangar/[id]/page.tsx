@@ -728,8 +728,8 @@ export default async function AircraftDetailPage({
           entryId={id}
           isAdmin={isAdmin}
           isPaid={isPaid}
-          initialForm337Summary={entry.form_337_summary ?? null}
-          initialTitleSummary={entry.title_history_summary ?? null}
+          initialForm337Summary={(aircraft?.form_337_summary as Record<string,unknown> | null) ?? null}
+          initialTitleSummary={(aircraft?.title_history_summary as Record<string,unknown> | null) ?? null}
           initialDocuments={aircraftDocuments || []}
         />
       </div>
