@@ -23,15 +23,38 @@ function createClient() {
   );
 }
 
-// GET /api/hangar/[id]/documents — list documents for this aircraft
+// GET /api/hangar/[id]/documents — list documents, or ?sign=1 to get a signed upload URL
 export async function GET(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const supabase = createClient();
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  // Signed upload URL mode — for large files bypassing Vercel 4.5 MB limit
+  const url = new URL(req.url);
+  if (url.searchParams.get("sign") === "1") {
+    const { data: profile } = await supabase.from("profiles").select("tier, email").eq("id", user.id).single();
+    if (profile?.tier !== "admin" && user.email !== "will.ware@me.com") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+    const type = url.searchParams.get("type");
+    const filename = url.searchParams.get("filename") || "document.pdf";
+    if (!type || !["form_337", "title_history"].includes(type)) {
+      return NextResponse.json({ error: "Invalid type" }, { status: 400 });
+    }
+    const adminClient = createAdminClient();
+    const safeName = filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+    const filePath = `${params.id}/${type}/${Date.now()}-${safeName}`;
+    const { data: signed, error: signError } = await adminClient.storage
+      .from("aircraft-documents")
+      .createSignedUploadUrl(filePath);
+    if (signError) return NextResponse.json({ error: signError.message }, { status: 500 });
+    return NextResponse.json({ signedUrl: signed.signedUrl, filePath });
+  }
+
+  // Normal list mode — return documents for this aircraft
   const { data: docs, error } = await supabase
     .from("aircraft_documents")
     .select("*")
