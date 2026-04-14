@@ -295,10 +295,10 @@ export default function DocumentSection({
               />
               <button
                 onClick={() => form337Ref.current?.click()}
-                disabled={uploading}
+                disabled={uploadingForm337}
                 className="w-full text-sm border-2 border-dashed border-gray-300 hover:border-blue-400 text-gray-500 hover:text-blue-600 rounded-lg py-2.5 transition"
               >
-                {uploading ? "Uploading…" : "+ Add Form 337 PDF"}
+                {uploadingForm337 ? "Uploading…" : "+ Add Form 337 PDF"}
               </button>
             </div>
 
@@ -325,10 +325,10 @@ export default function DocumentSection({
               />
               <button
                 onClick={() => titleRef.current?.click()}
-                disabled={uploading || titleDocs.length >= 1}
+                disabled={uploadingTitle || titleDocs.length >= 1}
                 className="w-full text-sm border-2 border-dashed border-gray-300 hover:border-blue-400 text-gray-500 hover:text-blue-600 rounded-lg py-2.5 transition disabled:opacity-40"
               >
-                {uploading ? "Uploading…" : titleDocs.length >= 1 ? "Title uploaded (replace to update)" : "+ Add Title History PDF"}
+                {uploadingTitle ? "Uploading…" : titleDocs.length >= 1 ? "Title uploaded (replace to update)" : "+ Add Title History PDF"}
               </button>
             </div>
           </div>
