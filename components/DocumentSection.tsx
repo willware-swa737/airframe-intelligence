@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 interface Document {
   id: string;
