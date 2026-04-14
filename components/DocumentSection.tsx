@@ -132,13 +132,40 @@ export default function DocumentSection({
     setUploading(true);
     setUploadError(null);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      fd.append("type", type);
-      const res = await fetch(`/api/hangar/${entryId}/documents`, { method: "POST", body: fd });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Upload failed");
-      setDocuments((prev) => [...prev, data.document]);
+      // Step 1: Get a pre-signed upload URL — bypasses Vercel 4.5 MB body limit
+      const signRes = await fetch(
+        `/api/hangar/${entryId}/documents?sign=1&type=${type}&filename=${encodeURIComponent(file.name)}`
+      );
+      if (!signRes.ok) {
+        const d = await signRes.json().catch(() => ({}));
+        throw new Error(d.error || "Could not get upload URL (" + signRes.status + ")");
+      }
+      const { signedUrl, filePath } = await signRes.json();
+      if (!signedUrl) throw new Error("No upload URL returned");
+
+      // Step 2: Upload file directly to Supabase Storage (no Vercel in the path)
+      const putRes = await fetch(signedUrl, {
+        method: "PUT",
+        headers: { "Content-Type": "application/pdf" },
+        body: file,
+      });
+      if (!putRes.ok) {
+        const t = await putRes.text().catch(() => "");
+        throw new Error(t || "Storage upload failed (" + putRes.status + ")");
+      }
+
+      // Step 3: Record metadata in DB via API (tiny JSON payload)
+      const metaRes = await fetch(`/api/hangar/${entryId}/documents`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type, filename: file.name, file_path: filePath, file_size: file.size }),
+      });
+      if (!metaRes.ok) {
+        const d = await metaRes.json().catch(() => ({}));
+        throw new Error(d.error || "Failed to record document (" + metaRes.status + ")");
+      }
+      const metaData = await metaRes.json();
+      setDocuments((prev) => [...prev, metaData.document]);
     } catch (err: unknown) {
       setUploadError(err instanceof Error ? err.message : "Upload failed");
     } finally {
