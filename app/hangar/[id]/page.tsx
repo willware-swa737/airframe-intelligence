@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import Navigation from "@/components/Navigation";
 import DeleteAircraftButton from "@/components/DeleteAircraftButton";
 import AvioncsPanelUpload from "@/components/AvioncsPanelUpload";
+import EditableAvionics from "@/components/EditableAvionics";
 import EditableField from "@/components/EditableField";
 import DocumentSection from "@/components/DocumentSection";
 
