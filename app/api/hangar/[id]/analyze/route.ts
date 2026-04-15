@@ -294,3 +294,34 @@ export async function GET(
 
   return NextResponse.json({ urls });
 }
+
+// PATCH /api/hangar/[id]/analyze — save edited analysis back to the aircraft record
+export async function PATCH(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id } = await context.params;
+  const supabase = createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const { data: profile } = await supabase.from("profiles").select("tier, email").eq("id", user.id).single();
+  if (profile?.tier !== "admin" && user.email !== "will.ware@me.com") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const { type, summary } = await req.json();
+  if (!type || !summary) return NextResponse.json({ error: "Missing type or summary" }, { status: 400 });
+
+  const adminClient = createAdminClient();
+  const { data: entry } = await adminClient.from("hangar_entries").select("aircraft_id").eq("id", id).single();
+  if (!entry?.aircraft_id) return NextResponse.json({ error: "Aircraft not found" }, { status: 404 });
+
+  const column = type === "form_337" ? "form_337_summary" : type === "title_history" ? "title_history_summary" : null;
+  if (!column) return NextResponse.json({ error: "Invalid type" }, { status: 400 });
+
+  const { error: updateError } = await adminClient.from("aircraft").update({ [column]: summary }).eq("id", entry.aircraft_id);
+  if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 });
+
+  return NextResponse.json({ success: true });
+}
