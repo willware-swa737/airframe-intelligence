@@ -727,7 +727,7 @@ export default function DocumentSection({
         )}
       </section>
 
-      {{/* ── Dialogs ── */}
+      {/* ── Dialogs ── */}
       {showForm337Dialog && form337Summary && (
         <Form337Dialog
           summary={form337Summary}
